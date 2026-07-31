@@ -1,0 +1,17 @@
+{
+  "name": "basa-english-roleplay-chatbot",
+  "version": "1.0.0",
+  "description": "Basa - AI English Roleplay Chatbot with Live Grammar Correction powered by Gemini 3.6 Flash & 3.5 Flash",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@google/genai": "*",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}

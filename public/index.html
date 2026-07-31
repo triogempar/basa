@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Basa - AI English Roleplay & Grammar Coach</title>
+  <meta name="description" content="Master English with Basa AI roleplay companions Atma and Raya. Practice interviews and daily conversation with instant Indonesian grammar feedback powered by Gemini 3.6 Flash & 3.5 Flash.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12A10 10 0 0 1 12 2z"/>
+            <path d="M8 10h8M8 14h5"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>Basa</h1>
+          <span class="badge" id="modelBadge">Powered by Gemini 3.6 Flash</span>
+        </div>
+      </div>
+
+      <!-- Avatar Selector Tabs -->
+      <div class="avatar-tabs" id="avatarTabs">
+        <button class="tab-btn active" data-avatar="atma" id="tabAtma">
+          <div class="tab-avatar-icon atma-icon">💼</div>
+          <div class="tab-info">
+            <span class="avatar-name">Atma</span>
+            <span class="avatar-role">Formal Interviewer</span>
+          </div>
+        </button>
+        <button class="tab-btn" data-avatar="raya" id="tabRaya">
+          <div class="tab-avatar-icon raya-icon">✨</div>
+          <div class="tab-info">
+            <span class="avatar-name">Raya</span>
+            <span class="avatar-role">Casual Friend</span>
+          </div>
+        </button>
+      </div>
+    </header>
+
+    <!-- Active Persona Banner -->
+    <div class="persona-banner" id="personaBanner">
+      <div class="persona-details">
+        <div class="status-dot"></div>
+        <span id="personaName">Atma</span>
+        <span class="divider">•</span>
+        <span id="personaTagline" class="tagline">HR Interviewer conducting a formal job interview in English</span>
+      </div>
+      <div class="audio-control">
+        <label class="toggle-switch">
+          <input type="checkbox" id="ttsToggle" checked>
+          <span class="slider"></span>
+        </label>
+        <span class="toggle-label">Auto Voice Read</span>
+      </div>
+    </div>
+
+    <!-- Error Banner -->
+    <div class="error-banner hidden" id="errorBanner">
+      <span class="error-icon">⚠️</span>
+      <span id="errorMessage">An error occurred. Please check your GEMINI_API_KEY environment variable.</span>
+      <button class="dismiss-btn" id="dismissError">&times;</button>
+    </div>
+
+    <!-- Chat Messages Container -->
+    <main class="chat-container" id="chatContainer">
+      <!-- Chat bubbles rendered dynamically via app.js -->
+    </main>
+
+    <!-- Typing / Thinking Indicator -->
+    <div class="typing-indicator hidden" id="typingIndicator">
+      <div class="dots">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <span id="typingText">Atma is thinking...</span>
+    </div>
+
+    <!-- Footer Input Bar -->
+    <footer class="chat-footer">
+      <form class="input-form" id="chatForm">
+        <div class="input-wrapper">
+          <textarea 
+            id="userInput" 
+            placeholder="Type your reply in English... (Press Enter to send, Shift+Enter for new line)" 
+            rows="1" 
+            autocomplete="off"
+            required></textarea>
+        </div>
+        <button type="submit" id="sendBtn" class="send-btn" title="Send Message">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </form>
+      <div class="footer-tip">
+        <span>Tip: Speak naturally in English. If you make any mistakes, your companion will gently point them out with Indonesian tips!</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
