@@ -27,10 +27,10 @@
   --raya-glow: rgba(244, 114, 182, 0.25);
   --raya-gradient: linear-gradient(135deg, #db2777 0%, #e11d48 100%);
 
-  /* Dynamic Active Theme Variables (Defaults to Atma) */
-  --active-accent: var(--atma-primary);
-  --active-glow: var(--atma-glow);
-  --active-gradient: var(--atma-gradient);
+  /* Dynamic Active Theme Variables (Defaults to Raya) */
+  --active-accent: var(--raya-primary);
+  --active-glow: var(--raya-glow);
+  --active-gradient: var(--raya-gradient);
 
   /* User Message Gradient */
   --user-msg-gradient: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);

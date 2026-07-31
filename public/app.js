@@ -5,7 +5,7 @@
 
 // Application State
 const state = {
-  currentAvatar: 'atma', // 'atma' | 'raya'
+  currentAvatar: 'raya', // 'raya' | 'atma'
   histories: {
     atma: [],
     raya: []
@@ -53,8 +53,8 @@ const dismissError = document.getElementById('dismissError');
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
-  // Auto-start session for default avatar (Atma)
-  switchAvatar('atma');
+  // Auto-start session for default avatar (Raya)
+  switchAvatar('raya');
 });
 
 // Setup DOM Event Listeners
@@ -214,14 +214,6 @@ async function handleSendMessage() {
     }
 
     const aiResult = data.result; // { reply, hasCorrection, correction }
-    const modelUsed = data.modelUsed;
-
-    if (modelUsed) {
-      const modelBadge = document.getElementById('modelBadge');
-      if (modelBadge) {
-        modelBadge.textContent = `Powered by ${modelUsed}`;
-      }
-    }
 
     // Store AI response into history
     const modelEntry = {
@@ -402,6 +394,20 @@ function showTyping(show, text = 'Thinking...') {
 function showError(msg) {
   errorMessage.textContent = msg;
   errorBanner.classList.remove('hidden');
+
+  // Render a system alert message bubble directly inside the chat window
+  const systemRow = document.createElement('div');
+  systemRow.className = 'message-row model';
+  systemRow.innerHTML = `
+    <div class="avatar-bubble" style="background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.5);">⚠️</div>
+    <div class="message-content-group">
+      <div class="message-bubble" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5;">
+        ${escapeHtml(msg)}
+      </div>
+    </div>
+  `;
+  chatContainer.appendChild(systemRow);
+  scrollToBottom();
 }
 
 function scrollToBottom() {
