@@ -10,7 +10,16 @@ const state = {
     atma: [],
     raya: []
   },
+  topics: {
+    atma: [],
+    raya: []
+  },
+  activeScenario: {
+    atma: null,
+    raya: null
+  },
   isThinking: false,
+  isLoadingTopics: false,
   autoTTS: true
 };
 
@@ -37,9 +46,8 @@ const AVATAR_META = {
 // DOM Elements
 const tabAtma = document.getElementById('tabAtma');
 const tabRaya = document.getElementById('tabRaya');
-const personaName = document.getElementById('personaName');
-const personaTagline = document.getElementById('personaTagline');
-const ttsToggle = document.getElementById('ttsToggle');
+const ttsToggleBtn = document.getElementById('ttsToggleBtn');
+const ttsIcon = document.getElementById('ttsIcon');
 const chatContainer = document.getElementById('chatContainer');
 const chatForm = document.getElementById('chatForm');
 const userInput = document.getElementById('userInput');
@@ -63,10 +71,32 @@ function setupEventListeners() {
   tabAtma.addEventListener('click', () => switchAvatar('atma'));
   tabRaya.addEventListener('click', () => switchAvatar('raya'));
 
-  // TTS Toggle Switch
-  ttsToggle.addEventListener('change', (e) => {
-    state.autoTTS = e.target.checked;
-  });
+  // TTS Icon Button Toggle
+  if (ttsToggleBtn) {
+    ttsToggleBtn.addEventListener('click', () => {
+      state.autoTTS = !state.autoTTS;
+      if (ttsToggleBtn) {
+        ttsToggleBtn.classList.toggle('active', state.autoTTS);
+      }
+      if (ttsIcon) {
+        ttsIcon.textContent = state.autoTTS ? '🔊' : '🔇';
+      }
+    });
+  }
+
+
+
+  // Clear Chat History
+  const clearChatBtn = document.getElementById('clearChatBtn');
+  if (clearChatBtn) {
+    clearChatBtn.addEventListener('click', async () => {
+      const avatarKey = state.currentAvatar;
+      state.histories[avatarKey] = [];
+      state.activeScenario[avatarKey] = null;
+      renderChatHistory();
+      await startAvatarSession(avatarKey);
+    });
+  }
 
   // Error Banner Dismiss
   dismissError.addEventListener('click', () => {
@@ -93,7 +123,7 @@ function setupEventListeners() {
   });
 }
 
-// Switch Active Avatar Tab & Load History
+// Switch Active Avatar Tab & Load History & Load Topics
 async function switchAvatar(avatarKey) {
   if (state.isThinking) return; // Prevent tab switch during active API request
 
@@ -115,12 +145,19 @@ async function switchAvatar(avatarKey) {
     document.documentElement.style.setProperty('--active-gradient', 'var(--raya-gradient)');
   }
 
-  // Update Persona Header Details
-  personaName.textContent = meta.name;
-  personaTagline.textContent = meta.tagline;
+  // Update Persona Header Details if present
+  const personaName = document.getElementById('personaName');
+  const personaTagline = document.getElementById('personaTagline');
+  if (personaName) personaName.textContent = meta.name;
+  if (personaTagline) personaTagline.textContent = meta.tagline;
 
-  // Render Saved History for this avatar
+  // Render Saved History & Topics for this avatar
   renderChatHistory();
+
+  // Load AI topics if not loaded yet
+  if (!state.topics[avatarKey] || state.topics[avatarKey].length === 0) {
+    fetchAITopics(avatarKey);
+  }
 
   // If no history exists yet for this avatar, trigger start-session API
   if (state.histories[avatarKey].length === 0) {
@@ -128,15 +165,126 @@ async function switchAvatar(avatarKey) {
   }
 }
 
+
+// Fetch 3 AI-generated Roleplay Scenarios from Gemini Backend
+async function fetchAITopics(avatarKey) {
+  if (state.isLoadingTopics) return;
+  state.isLoadingTopics = true;
+
+  renderChatHistory();
+
+  try {
+    const res = await fetch('/api/generate-topics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ avatarKey })
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to generate AI topics (Status ${res.status})`);
+    }
+
+    const data = await res.json();
+    state.topics[avatarKey] = data.topics || [];
+  } catch (err) {
+    console.error('Fetch topics error:', err);
+  } finally {
+    state.isLoadingTopics = false;
+    renderChatHistory();
+  }
+}
+
+// Render Starter Scenario Prompt Cards directly inside the Chat Window (Empty State)
+function renderStarterScenariosWidget(avatarKey) {
+  const container = document.createElement('div');
+  container.className = 'starter-scenarios-container';
+
+  const topics = state.topics[avatarKey] || [];
+  const isLoading = state.isLoadingTopics;
+
+  let cardsHtml = '';
+  if (isLoading) {
+    cardsHtml = `
+      <div class="starter-skeleton"></div>
+      <div class="starter-skeleton"></div>
+      <div class="starter-skeleton"></div>
+    `;
+  } else if (topics.length > 0) {
+    cardsHtml = topics.map(t => {
+      const isActive = state.activeScenario[avatarKey] && state.activeScenario[avatarKey].id === t.id;
+      return `
+        <button class="starter-card ${isActive ? 'active' : ''}" data-topic-id="${escapeHtml(t.id)}">
+          <div class="starter-card-top">
+            <span class="starter-icon">${escapeHtml(t.icon || '💬')}</span>
+            <span class="starter-tag">${escapeHtml(t.tag || 'Roleplay')}</span>
+          </div>
+          <div class="starter-card-title">${escapeHtml(t.title)}</div>
+          <div class="starter-card-desc">${escapeHtml(t.description)}</div>
+        </button>
+      `;
+    }).join('');
+  } else {
+    cardsHtml = `<div class="starter-empty">Tap Shuffle to generate fresh AI scenarios.</div>`;
+  }
+
+  container.innerHTML = `
+    <div class="starter-header">
+      <div class="starter-title">
+        <span class="sparkle-icon">✨</span>
+        <span>Choose a Practice Scenario (Generated by AI)</span>
+      </div>
+      <button class="starter-shuffle-btn" id="shuffleStarterBtn" title="Generate New AI Scenarios">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+        </svg>
+        <span>Shuffle Topics</span>
+      </button>
+    </div>
+    <div class="starter-grid">
+      ${cardsHtml}
+    </div>
+  `;
+
+  // Bind scenario card click events
+  const cardBtns = container.querySelectorAll('.starter-card');
+  cardBtns.forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const topicId = btn.getAttribute('data-topic-id');
+      const selectedTopic = topics.find(t => t.id === topicId);
+      if (selectedTopic && !state.isThinking) {
+        state.activeScenario[avatarKey] = selectedTopic;
+        state.histories[avatarKey] = [];
+        renderChatHistory();
+        await startAvatarSession(avatarKey, selectedTopic);
+      }
+    });
+  });
+
+  // Bind shuffle topics button
+  const shuffleBtn = container.querySelector('#shuffleStarterBtn');
+  if (shuffleBtn) {
+    if (state.isLoadingTopics) shuffleBtn.classList.add('spinning');
+    shuffleBtn.addEventListener('click', () => {
+      fetchAITopics(state.currentAvatar);
+    });
+  }
+
+  chatContainer.appendChild(container);
+}
+
+
+
 // Trigger initial greeting from backend for selected avatar
-async function startAvatarSession(avatarKey) {
+async function startAvatarSession(avatarKey, overrideScenario = null) {
   showTyping(true, `${AVATAR_META[avatarKey].name} is connecting...`);
+
+  const activeScenario = overrideScenario || state.activeScenario[avatarKey];
 
   try {
     const res = await fetch('/api/start-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ avatarKey })
+      body: JSON.stringify({ avatarKey, scenario: activeScenario })
     });
 
     if (!res.ok) {
@@ -176,6 +324,7 @@ async function handleSendMessage() {
   if (!text || state.isThinking) return;
 
   const avatarKey = state.currentAvatar;
+  const activeScenario = state.activeScenario[avatarKey];
 
   // Add user message to history
   const userEntry = { role: 'user', text: text };
@@ -203,7 +352,8 @@ async function handleSendMessage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         avatarKey,
-        conversation: conversationPayload
+        conversation: conversationPayload,
+        scenario: activeScenario
       })
     });
 
@@ -240,8 +390,9 @@ async function handleSendMessage() {
 // Render Chat History for Active Avatar
 function renderChatHistory() {
   chatContainer.innerHTML = '';
-  const history = state.histories[state.currentAvatar];
-  const meta = AVATAR_META[state.currentAvatar];
+  const avatarKey = state.currentAvatar;
+  const history = state.histories[avatarKey];
+  const meta = AVATAR_META[avatarKey];
 
   history.forEach(item => {
     if (item.role === 'user') {
@@ -251,8 +402,17 @@ function renderChatHistory() {
     }
   });
 
+  // Show AI scenario prompt chips ONLY when session is empty & no scenario has been selected yet
+  const hasUserReplied = history.some(m => m.role === 'user');
+  const hasChosenScenario = state.activeScenario[avatarKey] !== null;
+  if (!hasUserReplied && !hasChosenScenario) {
+    renderStarterScenariosWidget(avatarKey);
+  }
+
   scrollToBottom();
 }
+
+
 
 // Helper to safely extract reply object if stored as string
 function parseRawModelText(text) {
@@ -297,7 +457,7 @@ function renderModelMessage(data, meta) {
       <div class="grammar-card">
         <div class="grammar-header">
           <span class="grammar-badge">
-            ⚡ Catatan Tata Bahasa & Kosakata
+            ⚡ Grammar & Phrasing Insight
           </span>
         </div>
         <div class="grammar-body">
@@ -325,8 +485,8 @@ function renderModelMessage(data, meta) {
         <div class="message-meta">
           <span>${meta.name} • ${meta.role}</span>
           <div class="message-actions">
-            <button class="action-icon-btn copy-btn" title="Copy text">📋</button>
-            <button class="action-icon-btn speak-btn" title="Read aloud">🔊</button>
+            <button class="action-icon-btn copy-btn" title="Copy text">📋 Copy</button>
+            <button class="action-icon-btn speak-btn" title="Read aloud">🔊 Listen</button>
           </div>
         </div>
       </div>
@@ -338,8 +498,8 @@ function renderModelMessage(data, meta) {
   const copyBtn = row.querySelector('.copy-btn');
   copyBtn.addEventListener('click', () => {
     navigator.clipboard.writeText(replyText);
-    copyBtn.textContent = '✓';
-    setTimeout(() => copyBtn.textContent = '📋', 1500);
+    copyBtn.textContent = '✓ Copied';
+    setTimeout(() => copyBtn.textContent = '📋 Copy', 1800);
   });
 
   const speakBtn = row.querySelector('.speak-btn');

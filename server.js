@@ -17,6 +17,19 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+import fs from 'fs';
+
+// Helper to load prompt files safely
+const loadPrompt = (filename) => {
+  const filePath = path.join(__dirname, 'prompts', filename);
+  try {
+    return fs.readFileSync(filePath, 'utf-8');
+  } catch (err) {
+    console.error(`Failed to load prompt file ${filename}:`, err.message);
+    return '';
+  }
+};
+
 // Avatar Personas Configuration
 const AVATARS = {
   atma: {
@@ -24,20 +37,14 @@ const AVATARS = {
     role: 'HR Interviewer',
     tagline: 'Formal Job Interview',
     greeting: "Good day. Thank you for joining this interview. To start, could you please introduce yourself and tell me about your professional background?",
-    systemInstruction: `You are Atma, a professional HR Interviewer conducting a job interview in English. 
-Evaluate the user's English input carefully. If there are grammar, syntax, phrasing, or vocabulary mistakes, provide corrections with explanations written in clear Indonesian. Keep your conversational reply in formal, professional English as an HR interviewer. 
-Output MUST be valid JSON matching the specified schema.
-If the user's input has no grammar/vocabulary errors, set hasCorrection to false and correction to null.`
+    systemInstruction: loadPrompt('atma.txt')
   },
   raya: {
     name: 'Raya',
     role: 'Friendly Companion',
     tagline: 'Casual Daily Chat',
     greeting: "Hey there! How's your day going? What are you up to today?",
-    systemInstruction: `You are Raya, a friendly and casual friend chatting in natural English. 
-Evaluate the user's English input carefully. If there are grammar or vocabulary mistakes, provide corrections with explanations written in simple, friendly Indonesian. Keep your conversational reply in casual, warm English (standard slang is fine). 
-Output MUST be valid JSON matching the specified schema.
-If the user's input has no grammar/vocabulary errors, set hasCorrection to false and correction to null.`
+    systemInstruction: loadPrompt('raya.txt')
   }
 };
 
@@ -76,61 +83,46 @@ const responseSchema = {
   required: ['reply', 'hasCorrection', 'correction']
 };
 
+// Topic Generator JSON Schema definition for Gemini
+const topicSchema = {
+  type: Type.OBJECT,
+  properties: {
+    topics: {
+      type: Type.ARRAY,
+      description: 'List of 3 distinct practice roleplay scenarios',
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          id: { type: Type.STRING },
+          icon: { type: Type.STRING, description: 'One relevant emoji icon' },
+          title: { type: Type.STRING, description: 'Short catchy scenario title in English' },
+          tag: { type: Type.STRING, description: 'Short category tag like Casual • Beginner or Formal • Behavioral' },
+          description: { type: Type.STRING, description: 'Scenario context description in Indonesian (Bahasa Indonesia)' },
+          starterGreeting: { type: Type.STRING, description: 'Opening message in English from avatar to start this roleplay scenario' }
+        },
+        required: ['id', 'icon', 'title', 'tag', 'description', 'starterGreeting']
+      }
+    }
+  },
+  required: ['topics']
+};
+
+
 // Initialize Gemini Client
 const getGeminiClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey === 'your_gemini_api_key_here') {
+  if (!apiKey) {
     throw new Error('GEMINI_API_KEY is missing or invalid in environment variables.');
   }
   return new GoogleGenAI({ apiKey });
 };
-
-// ANSI Terminal Colors & Logger Utility
-const getTimestamp = () => new Date().toLocaleTimeString('en-GB');
-
-const log = {
-  info: (msg) => console.log(`\x1b[90m[${getTimestamp()}]\x1b[0m \x1b[36mℹ️ [Basa AI]\x1b[0m ${msg}`),
-  success: (msg) => console.log(`\x1b[90m[${getTimestamp()}]\x1b[0m \x1b[32m✅ [Basa AI]\x1b[0m ${msg}`),
-  warn: (model, reason) => console.log(`\x1b[90m[${getTimestamp()}]\x1b[0m \x1b[33m⚠️ [Fallback]\x1b[0m Model \x1b[1m${model}\x1b[0m gagal ➔ \x1b[33m${reason}\x1b[0m`),
-  error: (msg) => console.log(`\x1b[90m[${getTimestamp()}]\x1b[0m \x1b[31m❌ [Chat API Error]\x1b[0m ${msg}`)
-};
-
-// Helper to extract a clean 1-line summary from raw API errors
-function parseCleanErrorMessage(err) {
-  if (!err) return 'Unknown error';
-  const rawMsg = err.message || JSON.stringify(err);
-  if (rawMsg.includes('503') || rawMsg.includes('high demand') || rawMsg.includes('UNAVAILABLE')) {
-    return '503 Unavailable (High Demand / Server Overloaded)';
-  }
-  if (rawMsg.includes('404') || rawMsg.includes('not found')) {
-    return '404 Model Not Found';
-  }
-  if (rawMsg.includes('400') || rawMsg.includes('invalid argument')) {
-    return '400 Invalid Model or Parameters';
-  }
-  if (rawMsg.includes('GEMINI_API_KEY')) {
-    return 'Missing or invalid GEMINI_API_KEY';
-  }
-  if (rawMsg.includes('timed out')) {
-    return 'Timeout (>6s without response)';
-  }
-  try {
-    const parsed = JSON.parse(rawMsg);
-    if (parsed.error && parsed.error.message) {
-      return `${parsed.error.code || ''} ${parsed.error.message}`.substring(0, 100);
-    }
-  } catch (e) {}
-  return rawMsg.replace(/[\r\n]+/g, ' ').substring(0, 120);
-}
 
 // Preferred Model Hierarchy (Primary -> Lite -> Backup -> Stable Defaults)
 const MODELS_FALLBACK_LIST = [
   'gemini-3.6-flash',
   'gemini-3.5-flash-lite',
   'gemini-3.5-flash',
-  'gemini-3.1-flash-lite',
-  'gemini-2.5-flash',
-  'gemini-1.5-flash'
+  'gemini-3.1-flash-lite'
 ];
 
 // Helper to enforce a strict timeout per API call attempt so it never hangs indefinitely
@@ -166,61 +158,138 @@ async function generateWithFallback(ai, params) {
   let lastError = null;
   for (const modelName of MODELS_FALLBACK_LIST) {
     try {
-      log.info(`⏳ Memproses pesan dengan model: \x1b[1m${modelName}\x1b[0m...`);
+      console.log(`[Basa AI] ⏳ Trying model: ${modelName}...`);
       const response = await generateWithTimeout(ai, {
         ...params,
         model: modelName
       }, 6000);
 
-      log.success(`Respon berhasil dibuat menggunakan model: \x1b[1m${modelName}\x1b[0m`);
+      console.log(`[Basa AI] ✅ Successfully generated response using model: ${modelName}`);
       return { response, modelUsed: modelName };
     } catch (err) {
-      const cleanReason = parseCleanErrorMessage(err);
-      log.warn(modelName, cleanReason);
+      const errMsg = err.message || JSON.stringify(err);
+      console.warn(`[Basa AI] ⚠️ Model '${modelName}' failed/unavailable: ${errMsg}`);
       lastError = err;
     }
   }
   throw lastError || new Error('Semua model Gemini yang dikonfigurasi sedang tidak tersedia atau mengalami beban tinggi (Overloaded).');
 }
 
-// Endpoint 1: Start Session
+// Helper array shuffle for maximum topic randomness
+function getRandomThemes(avatarKey) {
+  const rayaThemes = [
+    'Baking & Cooking Disasters', 'Tech & Smartphone Debates', 'Planning a Surprise Party',
+    'Gym & Fitness Motivation', 'Weekend Road Trip', 'Adopting a Pet Dog/Cat',
+    'Camping & Wilderness Mishaps', 'Concert & Music Festival Stories', 'Street Food & Night Markets',
+    'Book & Movie Recommendations', 'DIY Home Decor & Renovation', 'Thrift Shopping & Fashion',
+    'Stuck in Heavy Traffic', 'Coffee Shop Latte Art', 'Gaming & Esports Tournaments'
+  ];
+
+  const atmaThemes = [
+    'System Outage Crisis Management', 'Cross-Cultural Team Leadership', 'Handling an Upset Enterprise Client',
+    'Salary & Equity Benefit Negotiation', 'Explaining a Resume Employment Gap', 'Career Transition to Management',
+    'Co-Founder & Stakeholder Conflict', 'Quarterly Revenue Performance Review', 'Agile Retrospective Feedback',
+    'Counter Offer Negotiation', 'Promotional Readiness Interview', 'Handling Project Scope Creep'
+  ];
+
+  const list = avatarKey === 'atma' ? atmaThemes : rayaThemes;
+  const shuffled = [...list].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, 4).join(', ');
+}
+
+// Endpoint 1: Generate Dynamic Roleplay Scenarios via AI
+app.post('/api/generate-topics', async (req, res) => {
+  try {
+    const { avatarKey } = req.body;
+    const avatar = AVATARS[avatarKey] || AVATARS.raya;
+    const ai = getGeminiClient();
+
+    const selectedThemes = getRandomThemes(avatarKey);
+    const randomSeed = Math.floor(Math.random() * 1000000);
+
+    const systemPrompt = avatarKey === 'atma'
+      ? 'You are a professional HR recruitment & career coaching lead. Generate 4 distinct, highly realistic, and creative job interview or professional communication scenarios in English.'
+      : 'You are a friendly conversation companion. Generate 4 distinct, highly creative, fun, and engaging daily life or travel roleplay scenarios in English.';
+
+    const userPrompt = `Generate 4 completely unique, fresh, non-repetitive English roleplay scenarios tailored for ${avatar.name} (${avatar.role}). Incorporate or take inspiration from these themes: [${selectedThemes}]. Random Seed: ${randomSeed}. Ensure each scenario has a title, short description in Indonesian, short category tag, emoji icon, and an opening greeting in English from ${avatar.name}.`;
+
+    const { response, modelUsed } = await generateWithFallback(ai, {
+      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+      config: {
+        systemInstruction: systemPrompt,
+        temperature: 1.0,
+        responseMimeType: 'application/json',
+        responseSchema: topicSchema
+      }
+    });
+
+    const parsed = JSON.parse(response.text);
+    res.json({ topics: parsed.topics || [], modelUsed });
+  } catch (err) {
+    console.error('Error in /api/generate-topics:', err);
+    res.status(500).json({ error: 'Gagal membuat skenario AI. Silakan coba lagi.' });
+  }
+});
+
+
+// Endpoint 2: Start Session (Supports Custom Scenario Opening)
 app.post('/api/start-session', (req, res) => {
-  const { avatarKey } = req.body;
+  const { avatarKey, scenario } = req.body;
   const avatar = AVATARS[avatarKey] || AVATARS.raya;
 
-  log.info(`▶️ Session baru dimulai untuk Avatar: \x1b[1m${avatar.name}\x1b[0m (${avatar.role})`);
+  let greeting = avatar.greeting;
+  if (scenario && scenario.starterGreeting) {
+    greeting = scenario.starterGreeting;
+  }
 
   res.json({
     avatarName: avatar.name,
     role: avatar.role,
-    greeting: avatar.greeting
+    greeting: greeting
   });
 });
 
-// Endpoint 2: Multi-turn Chat & Grammar Evaluation
+// Endpoint 3: Multi-turn Chat & Grammar Evaluation
 app.post('/api/chat', async (req, res) => {
   try {
-    const { avatarKey, conversation } = req.body;
+    const { avatarKey, conversation, scenario } = req.body;
     const avatar = AVATARS[avatarKey] || AVATARS.raya;
 
     if (!Array.isArray(conversation) || conversation.length === 0) {
       return res.status(400).json({ error: 'Conversation history is required.' });
     }
 
-    log.info(`💬 Pesan diterima dari user untuk Avatar \x1b[1m${avatar.name}\x1b[0m`);
-
     // Format conversation history for Gemini API: [{ role: 'user' | 'model', parts: [{ text: '...' }] }]
-    const formattedContents = conversation.map(msg => ({
-      role: msg.role === 'model' ? 'model' : 'user',
-      parts: [{ text: typeof msg.text === 'string' ? msg.text : JSON.stringify(msg.text) }]
-    }));
+    // Ensures clean text representation for previous model turns so Gemini remembers full context perfectly
+    const formattedContents = conversation.map(msg => {
+      let textContent = msg.text;
+      if (msg.role === 'model' && typeof textContent === 'string') {
+        try {
+          const parsed = JSON.parse(textContent);
+          if (parsed && parsed.reply) {
+            textContent = parsed.reply;
+          }
+        } catch (e) {
+          // If not JSON string, use original textContent
+        }
+      }
+      return {
+        role: msg.role === 'model' ? 'model' : 'user',
+        parts: [{ text: textContent }]
+      };
+    });
+
+    let activeSystemInstruction = avatar.systemInstruction;
+    if (scenario && scenario.title) {
+      activeSystemInstruction += `\n\n=== ACTIVE ROLEPLAY SCENARIO ===\nScenario Title: ${scenario.title}\nScenario Context: ${scenario.description}\nInstruction: Stay strictly in role for this scenario. Prompt and guide the user through this roleplay while maintaining your avatar persona.`;
+    }
 
     const ai = getGeminiClient();
 
     const { response, modelUsed } = await generateWithFallback(ai, {
       contents: formattedContents,
       config: {
-        systemInstruction: avatar.systemInstruction,
+        systemInstruction: activeSystemInstruction,
         temperature: 0.7,
         responseMimeType: 'application/json',
         responseSchema: responseSchema
@@ -232,7 +301,7 @@ app.post('/api/chat', async (req, res) => {
     try {
       parsedResult = JSON.parse(responseText);
     } catch (parseErr) {
-      log.error(`Gagal parsing JSON dari model: ${responseText.substring(0, 100)}`);
+      console.error('Failed to parse Gemini response as JSON:', responseText);
       return res.status(500).json({
         error: 'Format JSON dari model AI tidak valid.',
         raw: responseText
@@ -241,9 +310,7 @@ app.post('/api/chat', async (req, res) => {
 
     res.json({ result: parsedResult, modelUsed });
   } catch (error) {
-    const cleanErr = parseCleanErrorMessage(error);
-    log.error(`Gagal memproses percakapan: ${cleanErr}`);
-
+    console.error('Error in /api/chat:', error);
     let friendlyMessage = 'Terjadi kesalahan saat berkomunikasi dengan AI.';
     if (error.message && error.message.includes('GEMINI_API_KEY')) {
       friendlyMessage = 'GEMINI_API_KEY belum dikonfigurasi atau tidak valid di file .env.';
