@@ -14,7 +14,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 import fs from 'fs';
@@ -259,11 +259,14 @@ app.post('/api/chat', async (req, res) => {
       return res.status(400).json({ error: 'Conversation history is required.' });
     }
 
+    // Limit conversation array length to max last 30 messages to prevent payload bloat
+    const sanitizedConversation = conversation.slice(-30);
+
     // Format conversation history for Gemini API: [{ role: 'user' | 'model', parts: [{ text: '...' }] }]
     // Ensures clean text representation for previous model turns so Gemini remembers full context perfectly
-    const formattedContents = conversation.map(msg => {
-      let textContent = msg.text;
-      if (msg.role === 'model' && typeof textContent === 'string') {
+    const formattedContents = sanitizedConversation.map(msg => {
+      let textContent = (msg && msg.text) ? String(msg.text) : '';
+      if (msg && msg.role === 'model' && typeof textContent === 'string') {
         try {
           const parsed = JSON.parse(textContent);
           if (parsed && parsed.reply) {
@@ -274,7 +277,7 @@ app.post('/api/chat', async (req, res) => {
         }
       }
       return {
-        role: msg.role === 'model' ? 'model' : 'user',
+        role: (msg && msg.role === 'model') ? 'model' : 'user',
         parts: [{ text: textContent }]
       };
     });
@@ -303,8 +306,7 @@ app.post('/api/chat', async (req, res) => {
     } catch (parseErr) {
       console.error('Failed to parse Gemini response as JSON:', responseText);
       return res.status(500).json({
-        error: 'Format JSON dari model AI tidak valid.',
-        raw: responseText
+        error: 'Format JSON dari model AI tidak valid. Silakan coba lagi.'
       });
     }
 
