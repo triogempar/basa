@@ -63,6 +63,7 @@ const gateLoginBtn = document.getElementById('gateLoginBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 const authUser = document.getElementById('authUser');
 const userAvatar = document.getElementById('userAvatar');
+const userInitial = document.getElementById('userInitial');
 const userName = document.getElementById('userName');
 const authGateStatus = document.getElementById('authGateStatus');
 
@@ -153,6 +154,7 @@ function setupAuthGate() {
   logoutBtn.addEventListener('click', () => window.BasaAuth.logout());
   userAvatar.addEventListener('error', () => {
     userAvatar.classList.add('hidden');
+    userInitial.classList.remove('hidden');
   });
 
   startAuth();
@@ -166,7 +168,7 @@ async function startAuth() {
       await switchAvatar('raya');
       return;
     }
-    showGuest('Log in to unlock the roleplay chat.');
+    showGuest('Sign in to start your session.');
   } catch (err) {
     console.error('Auth0 init error:', err);
     showGuest(err.message || 'Auth0 login is unavailable.', {
@@ -182,16 +184,20 @@ function showAuthenticated(user) {
 
   const name = (user && (user.name || user.nickname || user.email)) || 'Signed in';
   userName.textContent = name;
+  userName.title = name;
+  userInitial.textContent = name.trim().charAt(0).toUpperCase() || 'B';
   authUser.classList.remove('hidden');
 
   if (user && user.picture && isSafeImageUrl(user.picture)) {
     userAvatar.alt = name;
     userAvatar.classList.remove('hidden');
+    userInitial.classList.add('hidden');
     userAvatar.src = user.picture;
   } else {
     userAvatar.removeAttribute('src');
     userAvatar.alt = '';
     userAvatar.classList.add('hidden');
+    userInitial.classList.remove('hidden');
   }
 }
 
