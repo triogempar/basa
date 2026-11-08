@@ -30,6 +30,7 @@ const AVATAR_META = {
     role: 'HR Interviewer',
     tagline: 'Formal Job Interview & Career Coaching',
     icon: '💼',
+    image: 'assets/atma.svg',
     voicePitch: 0.9,
     voiceRate: 0.95
   },
@@ -38,6 +39,7 @@ const AVATAR_META = {
     role: 'Casual Friend',
     tagline: 'Casual Daily Chat & Conversational English',
     icon: '✨',
+    image: 'assets/raya.svg',
     voicePitch: 1.1,
     voiceRate: 1.0
   }
@@ -91,7 +93,7 @@ function setupEventListeners() {
         ttsToggleBtn.classList.toggle('active', state.autoTTS);
       }
       if (ttsIcon) {
-        ttsIcon.textContent = state.autoTTS ? '🔊' : '🔇';
+        ttsIcon.classList.toggle('is-muted', !state.autoTTS);
       }
     });
   }
@@ -538,7 +540,7 @@ function renderUserMessage(text) {
   row.className = 'message-row user';
 
   row.innerHTML = `
-    <div class="avatar-bubble">👤</div>
+    <div class="avatar-bubble" aria-hidden="true">YOU</div>
     <div class="message-content-group">
       <div class="message-bubble">${escapeHtml(text)}</div>
       <div class="message-meta">
@@ -564,38 +566,36 @@ function renderModelMessage(data, meta) {
     const c = data.correction;
     correctionHtml = `
       <div class="grammar-card">
-        <div class="grammar-header">
-          <span class="grammar-badge">
-            ⚡ Grammar & Phrasing Insight
-          </span>
-        </div>
-        <div class="grammar-body">
-          <div class="diff-line">
-            <span class="diff-label">Original:</span>
+        <p class="grammar-kicker">Grammar check</p>
+        <div class="feedback-banner feedback-wrong">
+          <span class="feedback-mark" aria-hidden="true"></span>
+          <div>
+            <span class="feedback-label">Incorrect</span>
             <span class="original-text">${escapeHtml(c.originalText || '')}</span>
           </div>
-          <div class="diff-line">
-            <span class="diff-label">Better:</span>
+        </div>
+        <div class="feedback-banner feedback-right">
+          <span class="feedback-mark" aria-hidden="true"></span>
+          <div>
+            <span class="feedback-label">Correct</span>
             <span class="corrected-text">${escapeHtml(c.correctedText || '')}</span>
           </div>
-          <div class="explanation-text">
-            💡 <strong>Tips:</strong> ${escapeHtml(c.explanation || '')}
-          </div>
         </div>
+        <div class="explanation-text">${escapeHtml(c.explanation || '')}</div>
       </div>
     `;
   }
 
   row.innerHTML = `
-    <div class="avatar-bubble">${meta.icon}</div>
+    <div class="avatar-bubble"><img src="${meta.image}" alt=""></div>
     <div class="message-content-group">
       <div class="message-bubble">
         ${escapeHtml(replyText)}
         <div class="message-meta">
           <span>${meta.name} • ${meta.role}</span>
           <div class="message-actions">
-            <button class="action-icon-btn copy-btn" title="Copy text">📋 Copy</button>
-            <button class="action-icon-btn speak-btn" title="Read aloud">🔊 Listen</button>
+            <button class="action-icon-btn copy-btn" title="Copy text">Copy</button>
+            <button class="action-icon-btn speak-btn" title="Read aloud">Listen</button>
           </div>
         </div>
       </div>
@@ -607,8 +607,8 @@ function renderModelMessage(data, meta) {
   const copyBtn = row.querySelector('.copy-btn');
   copyBtn.addEventListener('click', () => {
     navigator.clipboard.writeText(replyText);
-    copyBtn.textContent = '✓ Copied';
-    setTimeout(() => copyBtn.textContent = '📋 Copy', 1800);
+    copyBtn.textContent = 'Copied';
+    setTimeout(() => copyBtn.textContent = 'Copy', 1800);
   });
 
   const speakBtn = row.querySelector('.speak-btn');
@@ -666,11 +666,11 @@ function showError(msg) {
 
   // Render a system alert message bubble directly inside the chat window
   const systemRow = document.createElement('div');
-  systemRow.className = 'message-row model';
+  systemRow.className = 'message-row model system-alert';
   systemRow.innerHTML = `
-    <div class="avatar-bubble" style="background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.5);">⚠️</div>
+    <div class="avatar-bubble" aria-hidden="true">!</div>
     <div class="message-content-group">
-      <div class="message-bubble" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5;">
+      <div class="message-bubble">
         ${escapeHtml(msg)}
       </div>
     </div>

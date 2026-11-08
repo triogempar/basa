@@ -22,7 +22,7 @@
 
 - **Backend:** Node.js, Express.js
 - **AI SDK:** `@google/genai` (Google Gemini API)
-- **Frontend:** Vanilla HTML, CSS, JavaScript
+- **Frontend:** Vanilla HTML, CSS, JavaScript. Huruf Nunito dan Fredoka (Google Fonts, SIL OFL).
 - **Login:** Auth0 Universal Login lewat `@auth0/auth0-spa-js` (tanpa client secret)
 - **Utilitas:** `dotenv`, `cors`
 
@@ -82,6 +82,7 @@ GeminiChatBot/
 ├── public/               # File antarmuka pengguna (Frontend)
 │   ├── app.js            # Logika interaksi UI & panggilan API
 │   ├── auth.js           # Login / logout Auth0 (SPA SDK)
+│   ├── assets/           # Ilustrasi persona, ikon, dan catatan lisensi
 │   ├── index.html        # Struktur HTML utama
 │   └── style.css         # Styling & tata letak UI
 ├── .env.example          # Template variabel lingkungan
@@ -122,6 +123,33 @@ Jika `PORT` di `.env` bukan `3000`, ganti `3000` di ketiga kolom dengan port ter
 Buka aplikasinya lewat `http://localhost:3000`. Auth0 memperlakukan `http://127.0.0.1:3000` sebagai origin yang berbeda; kalau kamu memakai alamat itu, daftarkan juga ketiga URL dengan host `127.0.0.1`.
 
 Rute Gemini (`/api/chat`, `/api/generate-topics`, `/api/start-session`) tidak diubah dan tidak memakai access token Auth0. Gerbang login ada di antarmuka.
+
+---
+
+## 🎨 Tampilan dan lisensi aset
+
+Antarmuka memakai bentuk bulat, huruf tebal, dan tombol dengan sisi bawah yang lebih gelap supaya terasa bisa ditekan. Warna utama Basa adalah biru. Banner grammar memakai hijau untuk kalimat yang lebih baik dan merah untuk kalimat yang keliru.
+
+| Peran | Hex |
+| --- | --- |
+| Biru utama | `#1A8CFF` |
+| Sisi bawah tombol biru | `#0B6FD6` |
+| Biru tua | `#0B3A73` |
+| Biru muda | `#E7F4FF` |
+| Langit (latar) | `#D6EEFF` |
+| Teks | `#3C3C3C` |
+| Teks sekunder | `#777777` |
+| Garis | `#E5E5E5` |
+| Benar | `#58CC02` (latar `#D7FFB8`, teks `#3F8F00`) |
+| Salah | `#FF4B4B` (latar `#FFDFE0`, teks `#EA2B2B`) |
+| Sorotan | `#FFC800` (latar `#FFF4CC`) |
+| Aksen Raya | `#FF9600` |
+
+Aset yang dipakai, dan lisensinya:
+
+- **Nunito** dan **Fredoka**, dimuat dari [Google Fonts](https://fonts.google.com/). Keduanya berlisensi [SIL Open Font License 1.1](https://scripts.sil.org/OFL). Nunito © 2014 The Nunito Project Authors. Fredoka oleh The Fredoka Project Authors. Berkas font tidak disalin ke repositori ini.
+- **Open Peeps** oleh Pablo Stanley, domain publik [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). Sumber: [openpeeps.com](https://www.openpeeps.com/). Gambar `public/assets/raya.svg` dan `public/assets/atma.svg` dibuat dengan [DiceBear](https://www.dicebear.com/styles/open-peeps/), gaya Open Peeps yang juga ditandai CC0.
+- **Lucide** (`lucide-static` v0.544.0), lisensi ISC. Ikon ada di `public/assets/icons/`. Teks lisensi lengkap ada di `public/assets/NOTICES.md`.
 
 ---
 
