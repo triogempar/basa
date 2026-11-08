@@ -95,6 +95,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(17, 24, 39, 0.95);
   gap: 16px;
@@ -123,6 +124,8 @@ body {
 .header-right {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
 }
 
@@ -624,6 +627,9 @@ textarea::placeholder {
   .scenarios-grid {
     grid-template-columns: 1fr;
   }
+  .user-name {
+    display: none;
+  }
 }
 
 
@@ -745,6 +751,181 @@ textarea::placeholder {
   animation: loadingShimmer 1.5s infinite;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Auth0 gate. Chat controls stay hidden until .is-logged-in is set. */
+.app-container:not(.is-logged-in) .chat-container,
+.app-container:not(.is-logged-in) .typing-indicator,
+.app-container:not(.is-logged-in) .chat-footer,
+.app-container:not(.is-logged-in) .header-right,
+.app-container:not(.is-logged-in) .error-banner {
+  display: none;
+}
+
+.app-container.is-logged-in .auth-gate {
+  display: none;
+}
+
+.auth-gate {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--slate-card-subtle);
+  border: 1px solid var(--border-slate-bright);
+  border-radius: var(--radius-lg);
+  padding: 32px 28px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth-card h2,
+.auth-card p {
+  margin: 0;
+}
+
+.auth-kicker {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--indigo-primary);
+}
+
+.auth-card h2 {
+  font-family: var(--font-heading);
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.auth-lead {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.auth-status,
+.auth-error {
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.auth-status {
+  color: var(--text-muted);
+}
+
+.auth-error {
+  color: #fca5a5;
+}
+
+.login-btn {
+  margin-top: 4px;
+  border: none;
+  background: var(--indigo-primary);
+  color: white;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.92rem;
+  padding: 10px 22px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.login-btn:hover {
+  background: var(--indigo-hover);
+}
+
+.login-btn:focus-visible {
+  outline: 2px solid var(--indigo-primary);
+  outline-offset: 3px;
+}
+
+.login-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 3px 4px 3px 3px;
+  border-radius: 999px;
+  border: 1px solid var(--border-slate-bright);
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.user-avatar,
+.user-fallback {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.user-avatar {
+  object-fit: cover;
+  background: var(--indigo-bg);
+}
+
+.user-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--indigo-bg);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.user-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logout-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.logout-btn:hover {
+  color: var(--text-primary);
+}
+
+.logout-btn:focus-visible {
+  outline: 2px solid var(--indigo-primary);
+  outline-offset: 2px;
+}
+
+.logout-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.hidden {
+  display: none !important;
 }
 
 

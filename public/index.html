@@ -42,7 +42,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app-container">
+  <div class="app-container" id="appContainer">
     <!-- Minimalist Single Header -->
     <header class="app-header">
       <div class="brand">
@@ -52,7 +52,7 @@
       </div>
 
       <!-- Right Header Actions -->
-      <div class="header-right">
+      <div class="header-right" id="headerActions" inert>
         <div class="avatar-tabs" id="avatarTabs">
           <button class="tab-btn active" data-avatar="raya" id="tabRaya">
             <span class="avatar-icon">✨</span>
@@ -76,8 +76,26 @@
             <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
           </svg>
         </button>
+
+        <div class="user-chip" id="userChip">
+          <img id="userAvatar" class="user-avatar hidden" alt="" width="26" height="26" referrerpolicy="no-referrer">
+          <span id="userFallback" class="user-fallback hidden" aria-hidden="true"></span>
+          <span id="userName" class="user-name"></span>
+          <button type="button" class="logout-btn" id="logoutBtn">Log out</button>
+        </div>
       </div>
     </header>
+
+    <section class="auth-gate" id="authGate" aria-labelledby="authTitle">
+      <div class="auth-card">
+        <p class="auth-kicker">Basa.ai</p>
+        <h2 id="authTitle">Log in to start practicing</h2>
+        <p class="auth-lead">Sign in with Auth0 to practice English with Raya and Atma. The chat stays closed until you are logged in.</p>
+        <button type="button" class="login-btn hidden" id="loginBtn">Log in</button>
+        <p class="auth-status" id="authStatus" role="status">Checking your session...</p>
+        <p class="auth-error hidden" id="authError" role="alert"></p>
+      </div>
+    </section>
 
 
     <!-- Error Banner -->
@@ -90,7 +108,7 @@
     </div>
 
     <!-- Chat Messages Container -->
-    <main class="chat-container" id="chatContainer">
+    <main class="chat-container" id="chatContainer" inert>
       <!-- Dynamic chat messages -->
     </main>
 
@@ -105,7 +123,7 @@
     </div>
 
     <!-- Minimal Input Bar -->
-    <footer class="chat-footer">
+    <footer class="chat-footer" id="chatFooter" inert>
       <form class="input-form" id="chatForm">
         <div class="input-wrapper">
           <textarea 
@@ -128,6 +146,9 @@
     </footer>
   </div>
 
+  <!-- Auth0 SPA SDK (UMD). Pinned so the quickstart API stays stable. -->
+  <script src="https://cdn.auth0.com/js/auth0-spa-js/2.30.0/auth0-spa-js.production.js"></script>
   <script src="app.js"></script>
+  <script src="auth.js"></script>
 </body>
 </html>

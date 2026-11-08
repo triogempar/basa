@@ -13,9 +13,40 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Strip quotes and surrounding whitespace so a pasted .env value still works.
+function cleanEnv(value) {
+  return String(value || '').trim().replace(/^['"]|['"]$/g, '');
+}
+
+// The SPA SDK wants the tenant host only, for example tenant.region.auth0.com.
+function normalizeAuth0Domain(value) {
+  return cleanEnv(value).replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+}
+
+function getAuth0PublicConfig() {
+  return {
+    domain: normalizeAuth0Domain(process.env.AUTH0_DOMAIN),
+    clientId: cleanEnv(process.env.AUTH0_CLIENT_ID)
+  };
+}
+
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Public SPA values only. Never include a client secret.
+app.get('/api/config', (_req, res) => {
+  const { domain, clientId } = getAuth0PublicConfig();
+  res.set('Cache-Control', 'no-store');
+
+  if (!domain || !clientId) {
+    return res.status(500).json({
+      error: 'Auth0 is not configured. Set AUTH0_DOMAIN and AUTH0_CLIENT_ID in the .env file.'
+    });
+  }
+
+  res.json({ domain, clientId });
+});
 
 import fs from 'fs';
 
@@ -327,6 +358,11 @@ app.post('/api/chat', async (req, res) => {
     });
   }
 });
+
+const auth0Config = getAuth0PublicConfig();
+if (!auth0Config.domain || !auth0Config.clientId) {
+  console.warn('[Basa] AUTH0_DOMAIN or AUTH0_CLIENT_ID is missing. The login screen will show a configuration error until both are set in .env.');
+}
 
 const server = app.listen(PORT, () => {
   console.log(`🚀 Basa AI Chatbot Server running on http://localhost:${PORT}`);

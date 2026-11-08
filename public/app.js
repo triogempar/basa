@@ -20,7 +20,8 @@ const state = {
   },
   isThinking: false,
   isLoadingTopics: false,
-  autoTTS: true
+  autoTTS: true,
+  isAuthenticated: false
 };
 
 // Avatar Configuration Metadata
@@ -58,12 +59,18 @@ const errorBanner = document.getElementById('errorBanner');
 const errorMessage = document.getElementById('errorMessage');
 const dismissError = document.getElementById('dismissError');
 
-// Initialize App
-document.addEventListener('DOMContentLoaded', () => {
+// The chat starts only after Auth0 login. auth.js calls this once the session is valid.
+let appStarted = false;
+
+function startBasaApp() {
+  if (appStarted) return;
+  appStarted = true;
+  state.isAuthenticated = true;
   setupEventListeners();
-  // Auto-start session for default avatar (Raya)
   switchAvatar('raya');
-});
+}
+
+window.startBasaApp = startBasaApp;
 
 // Setup DOM Event Listeners
 function setupEventListeners() {
@@ -125,7 +132,7 @@ function setupEventListeners() {
 
 // Switch Active Avatar Tab & Load History & Load Topics
 async function switchAvatar(avatarKey) {
-  if (state.isThinking) return; // Prevent tab switch during active API request
+  if (!state.isAuthenticated || state.isThinking) return; // Prevent tab switch during active API request
 
   state.currentAvatar = avatarKey;
   const meta = AVATAR_META[avatarKey];
@@ -168,7 +175,7 @@ async function switchAvatar(avatarKey) {
 
 // Fetch 3 AI-generated Roleplay Scenarios from Gemini Backend
 async function fetchAITopics(avatarKey) {
-  if (state.isLoadingTopics) return;
+  if (!state.isAuthenticated || state.isLoadingTopics) return;
   state.isLoadingTopics = true;
 
   renderChatHistory();
@@ -276,6 +283,7 @@ function renderStarterScenariosWidget(avatarKey) {
 
 // Trigger initial greeting from backend for selected avatar
 async function startAvatarSession(avatarKey, overrideScenario = null) {
+  if (!state.isAuthenticated) return;
   showTyping(true, `${AVATAR_META[avatarKey].name} is connecting...`);
 
   const activeScenario = overrideScenario || state.activeScenario[avatarKey];
@@ -321,7 +329,7 @@ async function startAvatarSession(avatarKey, overrideScenario = null) {
 // Send user message and fetch AI reply & grammar evaluation
 async function handleSendMessage() {
   const text = userInput.value.trim();
-  if (!text || state.isThinking) return;
+  if (!state.isAuthenticated || !text || state.isThinking) return;
 
   const avatarKey = state.currentAvatar;
   const activeScenario = state.activeScenario[avatarKey];
