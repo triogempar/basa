@@ -57,12 +57,23 @@ const typingText = document.getElementById('typingText');
 const errorBanner = document.getElementById('errorBanner');
 const errorMessage = document.getElementById('errorMessage');
 const dismissError = document.getElementById('dismissError');
+const appContainer = document.getElementById('appContainer');
+const loginBtn = document.getElementById('loginBtn');
+const gateLoginBtn = document.getElementById('gateLoginBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const authUser = document.getElementById('authUser');
+const userAvatar = document.getElementById('userAvatar');
+const userName = document.getElementById('userName');
+const authGateStatus = document.getElementById('authGateStatus');
 
-// Initialize App
+function isPracticeUnlocked() {
+  return appContainer.classList.contains('is-authenticated');
+}
+
+// Initialize App. The roleplay session starts only after Auth0 says we are logged in.
 document.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
-  // Auto-start session for default avatar (Raya)
-  switchAvatar('raya');
+  setupAuthGate();
 });
 
 // Setup DOM Event Listeners
@@ -123,8 +134,97 @@ function setupEventListeners() {
   });
 }
 
+// Log in / log out controls, then open the chat only for an authenticated user.
+function setupAuthGate() {
+  const onLogin = async () => {
+    setLoginBusy(true);
+    setAuthStatus('Redirecting to Auth0…');
+    try {
+      await window.BasaAuth.login();
+    } catch (err) {
+      console.error('Login error:', err);
+      setLoginBusy(false);
+      setAuthStatus(err.message || 'Could not start login.', true);
+    }
+  };
+
+  loginBtn.addEventListener('click', onLogin);
+  gateLoginBtn.addEventListener('click', onLogin);
+  logoutBtn.addEventListener('click', () => window.BasaAuth.logout());
+  userAvatar.addEventListener('error', () => {
+    userAvatar.classList.add('hidden');
+  });
+
+  startAuth();
+}
+
+async function startAuth() {
+  try {
+    const session = await window.BasaAuth.initAuth();
+    if (session.isAuthenticated) {
+      showAuthenticated(session.user);
+      await switchAvatar('raya');
+      return;
+    }
+    showGuest('Log in to unlock the roleplay chat.');
+  } catch (err) {
+    console.error('Auth0 init error:', err);
+    showGuest(err.message || 'Auth0 login is unavailable.', {
+      canLogin: window.BasaAuth.isReady(),
+      isError: true
+    });
+  }
+}
+
+function showAuthenticated(user) {
+  appContainer.classList.remove('is-guest');
+  appContainer.classList.add('is-authenticated');
+
+  const name = (user && (user.name || user.nickname || user.email)) || 'Signed in';
+  userName.textContent = name;
+  authUser.classList.remove('hidden');
+
+  if (user && user.picture && isSafeImageUrl(user.picture)) {
+    userAvatar.alt = name;
+    userAvatar.classList.remove('hidden');
+    userAvatar.src = user.picture;
+  } else {
+    userAvatar.removeAttribute('src');
+    userAvatar.alt = '';
+    userAvatar.classList.add('hidden');
+  }
+}
+
+function showGuest(message, { canLogin = true, isError = false } = {}) {
+  appContainer.classList.add('is-guest');
+  appContainer.classList.remove('is-authenticated');
+  authUser.classList.add('hidden');
+  setLoginBusy(!canLogin);
+  setAuthStatus(message || '', isError);
+}
+
+function isSafeImageUrl(url) {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+  } catch (err) {
+    return false;
+  }
+}
+
+function setLoginBusy(isBusy) {
+  loginBtn.disabled = isBusy;
+  gateLoginBtn.disabled = isBusy;
+}
+
+function setAuthStatus(message, isError) {
+  authGateStatus.textContent = message || '';
+  authGateStatus.classList.toggle('is-error', Boolean(isError));
+}
+
 // Switch Active Avatar Tab & Load History & Load Topics
 async function switchAvatar(avatarKey) {
+  if (!isPracticeUnlocked()) return;
   if (state.isThinking) return; // Prevent tab switch during active API request
 
   state.currentAvatar = avatarKey;
@@ -168,6 +268,7 @@ async function switchAvatar(avatarKey) {
 
 // Fetch 3 AI-generated Roleplay Scenarios from Gemini Backend
 async function fetchAITopics(avatarKey) {
+  if (!isPracticeUnlocked()) return;
   if (state.isLoadingTopics) return;
   state.isLoadingTopics = true;
 
@@ -276,6 +377,7 @@ function renderStarterScenariosWidget(avatarKey) {
 
 // Trigger initial greeting from backend for selected avatar
 async function startAvatarSession(avatarKey, overrideScenario = null) {
+  if (!isPracticeUnlocked()) return;
   showTyping(true, `${AVATAR_META[avatarKey].name} is connecting...`);
 
   const activeScenario = overrideScenario || state.activeScenario[avatarKey];
@@ -320,6 +422,7 @@ async function startAvatarSession(avatarKey, overrideScenario = null) {
 
 // Send user message and fetch AI reply & grammar evaluation
 async function handleSendMessage() {
+  if (!isPracticeUnlocked()) return;
   const text = userInput.value.trim();
   if (!text || state.isThinking) return;
 

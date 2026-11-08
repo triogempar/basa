@@ -23,6 +23,7 @@
 - **Backend:** Node.js, Express.js
 - **AI SDK:** `@google/genai` (Google Gemini API)
 - **Frontend:** Vanilla HTML, CSS, JavaScript
+- **Login:** Auth0 Universal Login lewat `@auth0/auth0-spa-js` (tanpa client secret)
 - **Utilitas:** `dotenv`, `cors`
 
 ---
@@ -47,12 +48,16 @@ Salin file contoh konfigurasi `.env.example` menjadi `.env`:
 cp .env.example .env
 ```
 
-Buka file `.env` dan masukkan API Key Gemini kamu:
+Buka file `.env` dan masukkan API Key Gemini kamu. Nilai Auth0 di bawah ini adalah Domain dan Client ID publik aplikasi SPA (bukan rahasia):
 
 ```env
 GEMINI_API_KEY=isi_dengan_api_key_gemini_kamu
 PORT=3000
+AUTH0_DOMAIN=triotomato.jp.auth0.com
+AUTH0_CLIENT_ID=wZvAlpEGr0ngXHT6VnHiEZK97c2YDOej
 ```
+
+Lalu isi URL callback di dashboard Auth0 seperti pada bagian [Login dengan Auth0](#login-dengan-auth0).
 
 ### 4. Jalankan Server
 Jalankan salah satu perintah berikut:
@@ -76,12 +81,47 @@ GeminiChatBot/
 ├── prompts/              # Prompt instruksi persona (atma.txt, raya.txt)
 ├── public/               # File antarmuka pengguna (Frontend)
 │   ├── app.js            # Logika interaksi UI & panggilan API
+│   ├── auth.js           # Login / logout Auth0 (SPA SDK)
 │   ├── index.html        # Struktur HTML utama
 │   └── style.css         # Styling & tata letak UI
 ├── .env.example          # Template variabel lingkungan
 ├── package.json          # Dependensi proyek & script runner
 └── server.js             # Express web server & integrasi Gemini API
 ```
+
+---
+
+## 🔐 Login dengan Auth0
+
+Chat roleplay hanya bisa dipakai setelah login. Tombol **Log in** mengarahkan ke Auth0 Universal Login, lalu pengguna kembali ke aplikasi dan melihat nama serta foto profil, bersama tombol **Log out**.
+
+Integrasinya mengikuti [panduan Auth0 untuk JavaScript SPA](https://auth0.com/docs/quickstart/spa/vanillajs):
+
+1. Server membaca `AUTH0_DOMAIN` dan `AUTH0_CLIENT_ID` dari `.env`.
+2. Browser mengambil kedua nilai itu dari `GET /api/auth-config`.
+3. `@auth0/auth0-spa-js` melakukan login dengan PKCE (`loginWithRedirect`).
+
+Jangan menambahkan client secret. Aplikasi ini bertipe **Single Page Application**, jadi Auth0 tidak memakai rahasia klien.
+
+### URL yang harus diisi di Auth0 Dashboard
+
+Buka [Auth0 Dashboard](https://manage.auth0.com/) → **Applications** → **Applications** → aplikasi Basa → tab **Settings** → bagian **Application URIs**. Untuk pengembangan lokal (port bawaan `3000`), isi persis nilai berikut, lalu klik **Save Changes**:
+
+| Kolom | Nilai |
+| --- | --- |
+| Allowed Callback URLs | `http://localhost:3000` |
+| Allowed Logout URLs | `http://localhost:3000` |
+| Allowed Web Origins | `http://localhost:3000` |
+
+- **Allowed Callback URLs** harus sama dengan `redirect_uri` (`window.location.origin`). Kalau tidak cocok, Auth0 menolak login.
+- **Allowed Logout URLs** harus sama dengan `returnTo`, supaya setelah logout browser kembali ke Basa.
+- **Allowed Web Origins** diperlukan untuk sesi senyap. Tanpa ini, pengguna terlihat logout setiap kali halaman di-refresh.
+
+Jika `PORT` di `.env` bukan `3000`, ganti `3000` di ketiga kolom dengan port tersebut. Contoh untuk port `3001`: `http://localhost:3001`.
+
+Buka aplikasinya lewat `http://localhost:3000`. Auth0 memperlakukan `http://127.0.0.1:3000` sebagai origin yang berbeda; kalau kamu memakai alamat itu, daftarkan juga ketiga URL dengan host `127.0.0.1`.
+
+Rute Gemini (`/api/chat`, `/api/generate-topics`, `/api/start-session`) tidak diubah dan tidak memakai access token Auth0. Gerbang login ada di antarmuka.
 
 ---
 

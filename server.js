@@ -15,6 +15,29 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
+
+// Public Auth0 SPA settings for the browser. Domain and Client ID are not
+// secrets. Never send a client secret — SPAs authenticate with PKCE.
+app.get('/api/auth-config', (_req, res) => {
+  res.json({
+    domain: process.env.AUTH0_DOMAIN || '',
+    clientId: process.env.AUTH0_CLIENT_ID || ''
+  });
+});
+
+// Browser build of @auth0/auth0-spa-js, loaded by public/auth.js.
+app.get('/vendor/auth0-spa-js.production.js', (_req, res) => {
+  const sdkPath = path.join(
+    __dirname,
+    'node_modules/@auth0/auth0-spa-js/dist/auth0-spa-js.production.js'
+  );
+  res.sendFile(sdkPath, (err) => {
+    if (err) {
+      res.status(404).type('text/plain').send('Auth0 SPA SDK is not installed. Run npm install.');
+    }
+  });
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 import fs from 'fs';
