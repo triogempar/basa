@@ -30,6 +30,7 @@ const AVATAR_META = {
     role: 'HR Interviewer',
     tagline: 'Formal Job Interview & Career Coaching',
     icon: '💼',
+    image: 'assets/atma.svg',
     voicePitch: 0.9,
     voiceRate: 0.95
   },
@@ -38,6 +39,7 @@ const AVATAR_META = {
     role: 'Casual Friend',
     tagline: 'Casual Daily Chat & Conversational English',
     icon: '✨',
+    image: 'assets/raya.svg',
     voicePitch: 1.1,
     voiceRate: 1.0
   }
@@ -57,12 +59,24 @@ const typingText = document.getElementById('typingText');
 const errorBanner = document.getElementById('errorBanner');
 const errorMessage = document.getElementById('errorMessage');
 const dismissError = document.getElementById('dismissError');
+const appContainer = document.getElementById('appContainer');
+const loginBtn = document.getElementById('loginBtn');
+const gateLoginBtn = document.getElementById('gateLoginBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const authUser = document.getElementById('authUser');
+const userAvatar = document.getElementById('userAvatar');
+const userInitial = document.getElementById('userInitial');
+const userName = document.getElementById('userName');
+const authGateStatus = document.getElementById('authGateStatus');
 
-// Initialize App
+function isPracticeUnlocked() {
+  return appContainer.classList.contains('is-authenticated');
+}
+
+// Initialize App. The roleplay session starts only after Auth0 says we are logged in.
 document.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
-  // Auto-start session for default avatar (Raya)
-  switchAvatar('raya');
+  setupAuthGate();
 });
 
 // Setup DOM Event Listeners
@@ -79,7 +93,7 @@ function setupEventListeners() {
         ttsToggleBtn.classList.toggle('active', state.autoTTS);
       }
       if (ttsIcon) {
-        ttsIcon.textContent = state.autoTTS ? '🔊' : '🔇';
+        ttsIcon.classList.toggle('is-muted', !state.autoTTS);
       }
     });
   }
@@ -123,8 +137,102 @@ function setupEventListeners() {
   });
 }
 
+// Log in / log out controls, then open the chat only for an authenticated user.
+function setupAuthGate() {
+  const onLogin = async () => {
+    setLoginBusy(true);
+    setAuthStatus('Redirecting to Auth0…');
+    try {
+      await window.BasaAuth.login();
+    } catch (err) {
+      console.error('Login error:', err);
+      setLoginBusy(false);
+      setAuthStatus(err.message || 'Could not start login.', true);
+    }
+  };
+
+  loginBtn.addEventListener('click', onLogin);
+  gateLoginBtn.addEventListener('click', onLogin);
+  logoutBtn.addEventListener('click', () => window.BasaAuth.logout());
+  userAvatar.addEventListener('error', () => {
+    userAvatar.classList.add('hidden');
+    userInitial.classList.remove('hidden');
+  });
+
+  startAuth();
+}
+
+async function startAuth() {
+  try {
+    const session = await window.BasaAuth.initAuth();
+    if (session.isAuthenticated) {
+      showAuthenticated(session.user);
+      await switchAvatar('raya');
+      return;
+    }
+    showGuest('Sign in to start your session.');
+  } catch (err) {
+    console.error('Auth0 init error:', err);
+    showGuest(err.message || 'Auth0 login is unavailable.', {
+      canLogin: window.BasaAuth.isReady(),
+      isError: true
+    });
+  }
+}
+
+function showAuthenticated(user) {
+  appContainer.classList.remove('is-guest');
+  appContainer.classList.add('is-authenticated');
+
+  const name = (user && (user.name || user.nickname || user.email)) || 'Signed in';
+  userName.textContent = name;
+  userName.title = name;
+  userInitial.textContent = name.trim().charAt(0).toUpperCase() || 'B';
+  authUser.classList.remove('hidden');
+
+  if (user && user.picture && isSafeImageUrl(user.picture)) {
+    userAvatar.alt = name;
+    userAvatar.classList.remove('hidden');
+    userInitial.classList.add('hidden');
+    userAvatar.src = user.picture;
+  } else {
+    userAvatar.removeAttribute('src');
+    userAvatar.alt = '';
+    userAvatar.classList.add('hidden');
+    userInitial.classList.remove('hidden');
+  }
+}
+
+function showGuest(message, { canLogin = true, isError = false } = {}) {
+  appContainer.classList.add('is-guest');
+  appContainer.classList.remove('is-authenticated');
+  authUser.classList.add('hidden');
+  setLoginBusy(!canLogin);
+  setAuthStatus(message || '', isError);
+}
+
+function isSafeImageUrl(url) {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+  } catch (err) {
+    return false;
+  }
+}
+
+function setLoginBusy(isBusy) {
+  loginBtn.disabled = isBusy;
+  gateLoginBtn.disabled = isBusy;
+}
+
+function setAuthStatus(message, isError) {
+  authGateStatus.textContent = message || '';
+  authGateStatus.classList.toggle('is-error', Boolean(isError));
+}
+
 // Switch Active Avatar Tab & Load History & Load Topics
 async function switchAvatar(avatarKey) {
+  if (!isPracticeUnlocked()) return;
   if (state.isThinking) return; // Prevent tab switch during active API request
 
   state.currentAvatar = avatarKey;
@@ -168,6 +276,7 @@ async function switchAvatar(avatarKey) {
 
 // Fetch 3 AI-generated Roleplay Scenarios from Gemini Backend
 async function fetchAITopics(avatarKey) {
+  if (!isPracticeUnlocked()) return;
   if (state.isLoadingTopics) return;
   state.isLoadingTopics = true;
 
@@ -276,6 +385,7 @@ function renderStarterScenariosWidget(avatarKey) {
 
 // Trigger initial greeting from backend for selected avatar
 async function startAvatarSession(avatarKey, overrideScenario = null) {
+  if (!isPracticeUnlocked()) return;
   showTyping(true, `${AVATAR_META[avatarKey].name} is connecting...`);
 
   const activeScenario = overrideScenario || state.activeScenario[avatarKey];
@@ -320,6 +430,7 @@ async function startAvatarSession(avatarKey, overrideScenario = null) {
 
 // Send user message and fetch AI reply & grammar evaluation
 async function handleSendMessage() {
+  if (!isPracticeUnlocked()) return;
   const text = userInput.value.trim();
   if (!text || state.isThinking) return;
 
@@ -429,7 +540,7 @@ function renderUserMessage(text) {
   row.className = 'message-row user';
 
   row.innerHTML = `
-    <div class="avatar-bubble">👤</div>
+    <div class="avatar-bubble" aria-hidden="true">YOU</div>
     <div class="message-content-group">
       <div class="message-bubble">${escapeHtml(text)}</div>
       <div class="message-meta">
@@ -455,38 +566,36 @@ function renderModelMessage(data, meta) {
     const c = data.correction;
     correctionHtml = `
       <div class="grammar-card">
-        <div class="grammar-header">
-          <span class="grammar-badge">
-            ⚡ Grammar & Phrasing Insight
-          </span>
-        </div>
-        <div class="grammar-body">
-          <div class="diff-line">
-            <span class="diff-label">Original:</span>
+        <p class="grammar-kicker">Grammar check</p>
+        <div class="feedback-banner feedback-wrong">
+          <span class="feedback-mark" aria-hidden="true"></span>
+          <div>
+            <span class="feedback-label">Incorrect</span>
             <span class="original-text">${escapeHtml(c.originalText || '')}</span>
           </div>
-          <div class="diff-line">
-            <span class="diff-label">Better:</span>
+        </div>
+        <div class="feedback-banner feedback-right">
+          <span class="feedback-mark" aria-hidden="true"></span>
+          <div>
+            <span class="feedback-label">Correct</span>
             <span class="corrected-text">${escapeHtml(c.correctedText || '')}</span>
           </div>
-          <div class="explanation-text">
-            💡 <strong>Tips:</strong> ${escapeHtml(c.explanation || '')}
-          </div>
         </div>
+        <div class="explanation-text">${escapeHtml(c.explanation || '')}</div>
       </div>
     `;
   }
 
   row.innerHTML = `
-    <div class="avatar-bubble">${meta.icon}</div>
+    <div class="avatar-bubble"><img src="${meta.image}" alt=""></div>
     <div class="message-content-group">
       <div class="message-bubble">
         ${escapeHtml(replyText)}
         <div class="message-meta">
           <span>${meta.name} • ${meta.role}</span>
           <div class="message-actions">
-            <button class="action-icon-btn copy-btn" title="Copy text">📋 Copy</button>
-            <button class="action-icon-btn speak-btn" title="Read aloud">🔊 Listen</button>
+            <button class="action-icon-btn copy-btn" title="Copy text">Copy</button>
+            <button class="action-icon-btn speak-btn" title="Read aloud">Listen</button>
           </div>
         </div>
       </div>
@@ -498,8 +607,8 @@ function renderModelMessage(data, meta) {
   const copyBtn = row.querySelector('.copy-btn');
   copyBtn.addEventListener('click', () => {
     navigator.clipboard.writeText(replyText);
-    copyBtn.textContent = '✓ Copied';
-    setTimeout(() => copyBtn.textContent = '📋 Copy', 1800);
+    copyBtn.textContent = 'Copied';
+    setTimeout(() => copyBtn.textContent = 'Copy', 1800);
   });
 
   const speakBtn = row.querySelector('.speak-btn');
@@ -557,11 +666,11 @@ function showError(msg) {
 
   // Render a system alert message bubble directly inside the chat window
   const systemRow = document.createElement('div');
-  systemRow.className = 'message-row model';
+  systemRow.className = 'message-row model system-alert';
   systemRow.innerHTML = `
-    <div class="avatar-bubble" style="background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.5);">⚠️</div>
+    <div class="avatar-bubble" aria-hidden="true">!</div>
     <div class="message-content-group">
-      <div class="message-bubble" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5;">
+      <div class="message-bubble">
         ${escapeHtml(msg)}
       </div>
     </div>

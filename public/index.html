@@ -11,7 +11,7 @@
   <meta name="keywords" content="AI English Chatbot, Grammar Coach, English Roleplay, Job Interview Practice, Learn English Indonesian, Gemini AI Chatbot, Basa AI">
   <meta name="author" content="Basa AI Team">
   <meta name="robots" content="index, follow">
-  <meta name="theme-color" content="#090d16">
+  <meta name="theme-color" content="#1A8CFF">
 
   <!-- Favicon (Emoji SVG Data URI) -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💬</text></svg>">
@@ -38,21 +38,23 @@
   <!-- Fonts & Stylesheet -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app-container">
+  <div class="app-container is-guest" id="appContainer">
     <!-- Minimalist Single Header -->
     <header class="app-header">
       <div class="brand">
+        <div class="brand-mark" aria-hidden="true">B</div>
         <div class="brand-title-wrap">
           <h1>Basa<span class="brand-dot">.ai</span></h1>
         </div>
       </div>
 
       <!-- Right Header Actions -->
-      <div class="header-right">
+      <div class="header-tools">
+        <div class="header-right">
         <div class="avatar-tabs" id="avatarTabs">
           <button class="tab-btn active" data-avatar="raya" id="tabRaya">
             <span class="avatar-icon">✨</span>
@@ -65,17 +67,26 @@
         </div>
 
         <!-- Audio TTS Icon Toggle -->
-        <button class="header-action-btn active" id="ttsToggleBtn" title="Toggle Auto Voice Read">
-          <span id="ttsIcon">🔊</span>
+        <button class="header-action-btn active" id="ttsToggleBtn" title="Toggle Auto Voice Read" aria-label="Toggle voice">
+          <span class="ico ico-volume" id="ttsIcon" aria-hidden="true"></span>
         </button>
 
-        <button class="header-action-btn" id="clearChatBtn" title="Reset Session">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 6h18"></path>
-            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-          </svg>
+        <button class="header-action-btn" id="clearChatBtn" title="Reset Session" aria-label="Reset session">
+          <span class="ico ico-trash" aria-hidden="true"></span>
         </button>
+        </div>
+
+        <div class="auth-slot" id="authSlot">
+          <button type="button" class="auth-login-btn" id="loginBtn" disabled>Log in</button>
+          <div class="auth-user hidden" id="authUser">
+            <span class="auth-identity">
+              <img class="auth-avatar hidden" id="userAvatar" alt="" width="28" height="28" referrerpolicy="no-referrer">
+              <span class="auth-avatar-fallback hidden" id="userInitial" aria-hidden="true"></span>
+              <span class="auth-name" id="userName"></span>
+            </span>
+            <button type="button" class="auth-logout-btn" id="logoutBtn">Log out</button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -88,6 +99,38 @@
       </div>
       <button class="dismiss-btn" id="dismissError" title="Dismiss">&times;</button>
     </div>
+
+    <!-- Shown until Auth0 reports a session. The roleplay UI stays behind this. -->
+    <section class="auth-gate" id="authGate">
+      <div class="auth-hero">
+        <p class="auth-kicker">English roleplay · live grammar</p>
+        <h2>Basa</h2>
+        <p class="auth-lede">Practice real conversations, then see a clearer sentence and why it works, explained in Indonesian.</p>
+        <ul class="lesson-path" aria-label="How a session works">
+          <li>Speak</li>
+          <li>Correct</li>
+          <li>Repeat</li>
+        </ul>
+        <div class="persona-duo">
+          <article class="persona-card persona-raya">
+            <img class="persona-art" src="assets/raya.svg" alt="" width="72" height="72">
+            <div>
+              <h3>Raya</h3>
+              <p>Casual daily chat</p>
+            </div>
+          </article>
+          <article class="persona-card persona-atma">
+            <img class="persona-art" src="assets/atma.svg" alt="" width="72" height="72">
+            <div>
+              <h3>Atma</h3>
+              <p>Formal job interviews</p>
+            </div>
+          </article>
+        </div>
+        <button type="button" class="auth-login-btn auth-login-btn-large" id="gateLoginBtn" disabled>Log in</button>
+        <p class="auth-gate-status" id="authGateStatus">Checking your session…</p>
+      </div>
+    </section>
 
     <!-- Chat Messages Container -->
     <main class="chat-container" id="chatContainer">
@@ -115,11 +158,8 @@
             autocomplete="off"
             required></textarea>
         </div>
-        <button type="submit" id="sendBtn" class="send-btn" title="Send">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13"></line>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-          </svg>
+        <button type="submit" id="sendBtn" class="send-btn" title="Send" aria-label="Send">
+          <span class="ico ico-send" aria-hidden="true"></span>
         </button>
       </form>
       <div class="footer-tip">
@@ -128,6 +168,8 @@
     </footer>
   </div>
 
+  <script src="/vendor/auth0-spa-js.production.js"></script>
+  <script src="auth.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

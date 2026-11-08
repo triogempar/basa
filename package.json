@@ -9,6 +9,7 @@
     "dev": "node --watch server.js"
   },
   "dependencies": {
+    "@auth0/auth0-spa-js": "^2.30.0",
     "@google/genai": "*",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
